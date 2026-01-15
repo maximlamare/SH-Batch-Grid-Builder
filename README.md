@@ -56,7 +56,6 @@ sh-grid-builder <input_aoi> --resolution "(x,y)" --epsg <epsg_code> --output-typ
 - `--output-type`: Type of output to generate:
   - `bounding-box`: Generate an aligned bounding box that covers the AOI
   - `pixelated`: Generate pixelated geometry of the AOI
-- `--strictly-within`: (Optional, for pixelated output only) Include only pixels whose full extent is strictly within the AOI. By default, all pixels that touch/intersect the AOI are included.
 - `-o, --output`: Path to output file (GPKG format required)
 
 #### Examples
@@ -77,12 +76,6 @@ Generate pixelated geometry:
 
 ```bash
 sh-grid-builder data/aoi.geojson --resolution "10,10" --epsg 3035 --output-type pixelated -o output_pixelated.gpkg
-```
-
-Generate pixelated geometry with only pixels strictly within the AOI:
-
-```bash
-sh-grid-builder data/aoi.geojson --resolution "10,10" --epsg 3035 --output-type pixelated --strictly-within -o output_pixelated.gpkg
 ```
 
 Example with geographic CRS (degrees):
@@ -108,10 +101,7 @@ geo_data = GeoData("path/to/aoi.geojson", epsg_code=4326, resolution_x=0.0029761
 aligned_bboxes = geo_data.create_aligned_bounding_box(max_pixels=3500)
 
 # Generate pixelated geometry (includes all pixels that touch/intersect the AOI)
-pixelated_geom = geo_data.create_pixelated_geometry_split(max_pixels=3500)
-
-# Generate pixelated geometry with only pixels strictly within the AOI
-pixelated_geom_strict = geo_data.create_pixelated_geometry_split(max_pixels=3500, all_touched=False)
+pixelated_geom = geo_data.create_pixelated_geometry(max_pixels=3500)
 
 # Save results
 aligned_bboxes.to_file("output_bbox.gpkg", driver="GPKG")
@@ -134,7 +124,8 @@ The pixelated geometry generation uses a raster-based approach:
 2. Polygonizes the raster back to vector format
 3. Automatically splits large geometries to avoid memory issues
 
-This approach is much faster than vector-based methods for large grids.
+This approach is much faster than vector-based methods for large grids. Pixelated
+output includes any pixel that touches/intersects the AOI.
 
 ## Requirements
 
