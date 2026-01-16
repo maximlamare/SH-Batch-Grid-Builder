@@ -62,13 +62,16 @@ class GeoData:
     def _align_axis(
         self, minv: float, maxv: float, origin: float, res: float
     ) -> tuple[float, float]:
-        # snap to grid defined by origin + k*res
-        aligned_min = origin + math.floor((minv - origin) / res) * res
-        aligned_max = origin + math.ceil((maxv - origin) / res) * res
+        # Snap to grid defined by origin + k*res, with epsilon to avoid off-by-one.
+        eps = res * 1e-9
+        min_idx = math.floor((minv - origin) / res + eps)
+        max_idx = math.ceil((maxv - origin) / res - eps)
 
-        # ensure width/height is multiple of res (guards floating error)
-        size = aligned_max - aligned_min
-        steps = math.ceil(size / res)
+        aligned_min = origin + min_idx * res
+        aligned_max = origin + max_idx * res
+
+        # Normalize length to an integer number of steps (guards floating error).
+        steps = max(1, int(round((aligned_max - aligned_min) / res)))
         aligned_max = aligned_min + steps * res
 
         return aligned_min, aligned_max
@@ -143,7 +146,9 @@ class GeoData:
 
         if not geometries:
             return gpd.GeoDataFrame(
-                [], columns=["id", "identifier", "width", "height", "geometry"], crs=CRS.from_epsg(self.crs)
+                [],
+                columns=["id", "identifier", "width", "height", "geometry"],
+                crs=CRS.from_epsg(self.crs),
             )
 
         aoi_union = unary_union(self.gdf.geometry)
@@ -153,7 +158,9 @@ class GeoData:
 
         if not filtered_tiles:
             return gpd.GeoDataFrame(
-                [], columns=["id", "identifier", "width", "height", "geometry"], crs=CRS.from_epsg(self.crs)
+                [],
+                columns=["id", "identifier", "width", "height", "geometry"],
+                crs=CRS.from_epsg(self.crs),
             )
 
         # Renumber tiles without gaps in row/col identifiers
@@ -215,6 +222,10 @@ class GeoData:
 
         if width_px <= 0 or height_px <= 0:
             return gpd.GeoDataFrame([], crs=self.gdf.crs)
+
+        # Snap max bounds to the pixel grid derived from the pixel counts.
+        aligned_maxx = aligned_minx + width_px * self.resolution_x
+        aligned_maxy = aligned_miny + height_px * self.resolution_y
 
         transform = from_origin(
             aligned_minx, aligned_maxy, self.resolution_x, self.resolution_y
