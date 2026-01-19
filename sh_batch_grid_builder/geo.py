@@ -1,8 +1,9 @@
 from pathlib import Path
 from typing import Union
 import math
+import numpy as np
 import geopandas as gpd
-from shapely.geometry import box, shape
+from shapely.geometry import box, shape, Polygon, MultiPolygon
 from shapely.ops import unary_union
 from sh_batch_grid_builder.crs import get_crs_data
 from pyproj import CRS
@@ -80,6 +81,14 @@ class GeoData:
         base = total // parts
         remainder = total % parts
         return [base + 1 if i < remainder else base for i in range(parts)]
+
+    @staticmethod
+    def _remove_holes(geometry):
+        if geometry.geom_type == "Polygon":
+            return Polygon(geometry.exterior)
+        if geometry.geom_type == "MultiPolygon":
+            return MultiPolygon([Polygon(p.exterior) for p in geometry.geoms])
+        return geometry
 
     def _grid_origin(self) -> tuple[float, float]:
         origin_x, origin_y = get_crs_data(self.crs)
@@ -261,6 +270,11 @@ class GeoData:
                     x_offset : x_offset + tile_w,
                 ]
                 if window.any():
+                    active = window > 0
+                    ys, xs = np.where(active)
+                    active_w = int(xs.max() - xs.min() + 1)
+                    active_h = int(ys.max() - ys.min() + 1)
+
                     tile_identifier = f"tile_{col_idx}_{row_idx}"
                     window_transform = from_origin(
                         aligned_minx + x_offset * self.resolution_x,
@@ -270,14 +284,14 @@ class GeoData:
                     )
                     feature_idx = 0
                     for geom, value in features.shapes(
-                        window, mask=window > 0, transform=window_transform
+                        window, mask=active, transform=window_transform
                     ):
                         feature_idx += 1
                         split_polygons.append(
                             {
-                                "geometry": shape(geom),
-                                "width": tile_w,
-                                "height": tile_h,
+                                "geometry": self._remove_holes(shape(geom)),
+                                "width": active_w,
+                                "height": active_h,
                                 "identifier": f"{tile_identifier}_{feature_idx}",
                             }
                         )
