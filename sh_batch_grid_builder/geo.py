@@ -271,9 +271,6 @@ class GeoData:
                 ]
                 if window.any():
                     active = window > 0
-                    ys, xs = np.where(active)
-                    active_w = int(xs.max() - xs.min() + 1)
-                    active_h = int(ys.max() - ys.min() + 1)
 
                     tile_identifier = f"tile_{col_idx}_{row_idx}"
                     window_transform = from_origin(
@@ -287,11 +284,15 @@ class GeoData:
                         window, mask=active, transform=window_transform
                     ):
                         feature_idx += 1
+                        polygon = self._remove_holes(shape(geom))
+                        minx, miny, maxx, maxy = polygon.bounds
+                        poly_w = int(round((maxx - minx) / self.resolution_x))
+                        poly_h = int(round((maxy - miny) / self.resolution_y))
                         split_polygons.append(
                             {
-                                "geometry": self._remove_holes(shape(geom)),
-                                "width": active_w,
-                                "height": active_h,
+                                "geometry": polygon,
+                                "width": poly_w,
+                                "height": poly_h,
                                 "identifier": f"{tile_identifier}_{feature_idx}",
                             }
                         )
