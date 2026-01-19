@@ -119,6 +119,10 @@ class GeoData:
         width_px = int(round((aligned_maxx - aligned_minx) / self.resolution_x))
         height_px = int(round((aligned_maxy - aligned_miny) / self.resolution_y))
 
+        # Snap max bounds to the pixel grid derived from the pixel counts.
+        aligned_maxx = aligned_minx + width_px * self.resolution_x
+        aligned_maxy = aligned_miny + height_px * self.resolution_y
+
         tiles_x = max(1, math.ceil(width_px / max_pixels))
         tiles_y = max(1, math.ceil(height_px / max_pixels))
 
