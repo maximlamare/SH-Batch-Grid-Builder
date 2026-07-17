@@ -89,6 +89,16 @@ Examples:
         help="Path to output file (GPKG format required)",
     )
 
+    parser.add_argument(
+        "--strictly-within",
+        action="store_true",
+        help=(
+            "Only applicable with --output-type pixelated. Keep only pixels "
+            "that are 100%% covered by the AOI geometry, excluding pixels "
+            "that only partially overlap it."
+        ),
+    )
+
     args = parser.parse_args()
 
     # Validate input file exists
@@ -145,7 +155,9 @@ Examples:
             print(
                 f"Generating pixelated geometry with resolution ({resolution_x}, {resolution_y})..."
             )
-            result_gdf = geo_data.create_pixelated_geometry(max_pixels=MAX_PIXELS)
+            result_gdf = geo_data.create_pixelated_geometry(
+                max_pixels=MAX_PIXELS, strictly_within=args.strictly_within
+            )
             print(f"Created {len(result_gdf)} pixelated geometry/geometries")
 
         # Save output
