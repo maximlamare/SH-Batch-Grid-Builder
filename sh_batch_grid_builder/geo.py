@@ -206,12 +206,18 @@ class GeoData:
 
         return bbox_gdf
 
-    def create_pixelated_geometry(self, max_pixels: int = 3500) -> gpd.GeoDataFrame:
+    def create_pixelated_geometry(
+        self, max_pixels: int = 3500, strictly_within: bool = False
+    ) -> gpd.GeoDataFrame:
         """
         Rasterize AOI to aligned grid, then dissolve connected pixels into polygons.
 
         Args:
             max_pixels: Maximum allowed pixels in either dimension (default: 3500)
+            strictly_within: If True, only keep pixels entirely within the AOI
+                geometry (a pixel is included only if it is entirely inside
+                the geometry). If False (default), pixels merely touched by
+                the geometry are also included.
 
         Returns:
             GeoDataFrame of dissolved pixel groups.
@@ -253,6 +259,26 @@ class GeoData:
             all_touched=True,
             dtype="uint8",
         )
+
+        if strictly_within:
+            # A pixel is 100% covered only if it intersects the geometry but
+            # does not touch its boundary line (which would indicate the
+            # pixel straddles the edge and is only partially covered).
+            boundary_shapes = [
+                (geom.boundary, 1)
+                for geom in self.gdf.geometry
+                if not geom.boundary.is_empty
+            ]
+            if boundary_shapes:
+                boundary_mask = features.rasterize(
+                    shapes=boundary_shapes,
+                    out_shape=(height_px, width_px),
+                    transform=transform,
+                    fill=0,
+                    all_touched=True,
+                    dtype="uint8",
+                )
+                mask = np.where(boundary_mask, 0, mask).astype("uint8")
 
         tiles_x = max(1, math.ceil(width_px / max_pixels))
         tiles_y = max(1, math.ceil(height_px / max_pixels))

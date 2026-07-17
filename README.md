@@ -56,6 +56,7 @@ sh-grid-builder <input_aoi> --resolution "(x,y)" --epsg <epsg_code> --output-typ
 - `--output-type`: Type of output to generate:
   - `bounding-box`: Generate an aligned bounding box that covers the AOI
   - `pixelated`: Generate pixelated geometry of the AOI
+- `--strictly-within`: Only applicable with `--output-type pixelated`. Keep only pixels that are 100% covered by the AOI geometry, discarding any pixel that only partially overlaps it (default: off, which includes any pixel touched by the AOI)
 - `-o, --output`: Path to output file (GPKG format required)
 
 #### Examples
@@ -76,6 +77,12 @@ Generate pixelated geometry:
 
 ```bash
 sh-grid-builder data/aoi.geojson --resolution "10,10" --epsg 3035 --output-type pixelated -o output_pixelated.gpkg
+```
+
+Generate pixelated geometry keeping only pixels 100% inside the AOI:
+
+```bash
+sh-grid-builder data/aoi.geojson --resolution "10,10" --epsg 3035 --output-type pixelated --strictly-within -o output_pixelated_strict.gpkg
 ```
 
 Example with geographic CRS (degrees):
@@ -103,6 +110,9 @@ aligned_bboxes = geo_data.create_aligned_bounding_box(max_pixels=3500)
 # Generate pixelated geometry (includes all pixels that touch/intersect the AOI)
 pixelated_geom = geo_data.create_pixelated_geometry(max_pixels=3500)
 
+# Generate pixelated geometry keeping only pixels 100% covered by the AOI
+pixelated_geom_strict = geo_data.create_pixelated_geometry(max_pixels=3500, strictly_within=True)
+
 # Save results
 aligned_bboxes.to_file("output_bbox.gpkg", driver="GPKG")
 pixelated_geom.to_file("output_pixelated.gpkg", driver="GPKG")
@@ -113,6 +123,7 @@ pixelated_geom.to_file("output_pixelated.gpkg", driver="GPKG")
 ### Aligned Bounding Boxes
 
 The tool creates bounding boxes that are aligned to a grid based on:
+
 1. The specified X and Y resolutions (can be different for non-square pixels)
 2. The CRS origin (false easting/northing) for projected coordinate systems
 3. Automatic splitting when dimensions exceed 3500 pixels (fixed limit)
@@ -120,12 +131,15 @@ The tool creates bounding boxes that are aligned to a grid based on:
 ### Pixelated Geometries
 
 The pixelated geometry generation uses a raster-based approach:
+
 1. Converts the input geometry to a raster mask
 2. Polygonizes the raster back to vector format
 3. Automatically splits large geometries to avoid memory issues
 
-This approach is much faster than vector-based methods for large grids. Pixelated
-output includes any pixel that touches/intersects the AOI.
+This approach is much faster than vector-based methods for large grids. By default,
+pixelated output includes any pixel that touches/intersects the AOI. Passing
+`strictly_within=True` (CLI: `--strictly-within`) restricts the output to pixels
+that are 100% covered by the AOI, discarding any pixel that only partially overlaps it.
 
 ## Requirements
 
